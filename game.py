@@ -6,7 +6,7 @@ from geopy import distance
 
 #Choose your own connection config
 db = mysql.connector.connect(
-    host = "192.168.1.17", 
+    host = "172.23.80.1", 
     port = 3306,
     database = "flight_game",
     user = "dbuser",
@@ -173,8 +173,8 @@ def calculate_co2_expenditure(distance:int, weather_name: str) -> int:
         expenditure == -1 # IF EXPENDITURE IS -1 then the player stays for one move
     return expenditure
 
-def co2_budget_is_enough_to_travel(c02_budget: int, distance: float) -> bool:
-    if c02_budget >= distance:
+def co2_budget_is_enough_to_travel(c02_budget: int, co2_expenditure: float) -> bool:
+    if c02_budget >= co2_expenditure:
         return True
     else:
         return False
@@ -187,12 +187,13 @@ def move_player(playerid: str, destination_icao: str, weather_name: str) -> bool
     #calculate distance between current location and destination
     current_location_icao = get_player_location(playerid)
     distance = calculate_distance(get_airport_coordinates(current_location_icao), get_airport_coordinates(destination_icao))
-
-    if not co2_budget_is_enough_to_travel(get_co2_budget(playerid), distance):
-        return False
     
     #calculate c02 expenditure for a flight
     co2_expenditure = calculate_co2_expenditure(distance, weather_name)
+
+    if not co2_budget_is_enough_to_travel(get_co2_budget(playerid), co2_expenditure):
+        return False
+    
     sql = f"UPDATE game SET co2_budget=co2_budget-%s, co2_consumed=co2_consumed+%s WHERE id=%s"
     cursor = db.cursor()
     try:
