@@ -6,7 +6,7 @@ from geopy import distance
 
 #Choose your own connection config
 db = mysql.connector.connect(
-    host = "172.23.80.1", 
+    host = "192.168.1.17", 
     port = 3306,
     database = "flight_game",
     user = "dbuser",
@@ -86,15 +86,12 @@ def roll_dice() -> int:
     return random.randint(1, 6)
 
 def get_random_weather_condition() -> tuple:
-    #Returns the name of a random weather condition
+    #Returns a random weather condition tuple where (name, description)
     sql = "SELECT name, description from GOAL"
     cursor = db.cursor()
     cursor.execute(sql)
     list_of_weather_conditions = cursor.fetchall()
     return random.choice(list_of_weather_conditions)
-
-def describe_weather_condition(condition: tuple):
-    print(condition[1])
 
 
 def player_won(playerid: str) -> bool:
@@ -160,18 +157,19 @@ def get_airport_country(icao: str) -> str:
 def calculate_distance(coordinates1: tuple, coordinates2: tuple) -> int:
     return int(distance.distance(coordinates1, coordinates2).km)
 
-def calculate_co2_expenditure(distance:int, weather_name: str) -> int:
+def calculate_co2_expenditure(distance:int, weather_tuple: tuple) -> int:
     #Check weather
-    expenditure = 0
-    if weather_name == "HOT" or weather_name == "COLD":
+    #weather tuple is a tuple where (name, description)
+    expenditure = distance
+    if weather_tuple[0] == "HOT" or weather_tuple[0] == "COLD":
         expenditure = distance * 1.2
-    if weather_name == "0DEG" or weather_name == "10DEG":
+    elif weather_tuple[0] == "0DEG" or weather_tuple[0] == "10DEG":
         expenditure = distance * 1.1
-    if weather_name == "20DEG" or weather_name == "CLEAR":
+    elif weather_tuple[0] == "20DEG" or weather_tuple[0] == "CLEAR":
         expenditure = distance
-    if weather_name == "CLOUDS" or weather_name == "WINDY":
+    elif weather_tuple[0] == "CLOUDS" or weather_tuple[0] == "WINDY":
         expenditure == -1 # IF EXPENDITURE IS -1 then the player stays for one move
-    return expenditure
+    return int(expenditure)
 
 def co2_budget_is_enough_to_travel(c02_budget: int, co2_expenditure: float) -> bool:
     if c02_budget >= co2_expenditure:
@@ -179,7 +177,7 @@ def co2_budget_is_enough_to_travel(c02_budget: int, co2_expenditure: float) -> b
     else:
         return False
     
-def move_player(playerid: str, destination_icao: str, weather_name: str) -> bool:
+def move_player(playerid: str, destination_icao: str, weather_tuple: tuple) -> bool:
     #Checks if players co2 budget is enough to travel and moves a player into the location
     #Returns false if failed due to insufficient c02 budget
     #Returns true if moved successfully
@@ -189,7 +187,7 @@ def move_player(playerid: str, destination_icao: str, weather_name: str) -> bool
     distance = calculate_distance(get_airport_coordinates(current_location_icao), get_airport_coordinates(destination_icao))
     
     #calculate c02 expenditure for a flight
-    co2_expenditure = calculate_co2_expenditure(distance, weather_name)
+    co2_expenditure = calculate_co2_expenditure(distance, weather_tuple)
 
     if not co2_budget_is_enough_to_travel(get_co2_budget(playerid), co2_expenditure):
         return False
@@ -205,25 +203,25 @@ def move_player(playerid: str, destination_icao: str, weather_name: str) -> bool
         print("Error moving player to the location.")
 
 def player_wants_to_move(playerid: str) -> bool:
-    try:
-        choice = str(input(f"{get_player_name(playerid)}, do you want to fly there? (y/n): "))
-        choice = choice.lower()
-        if choice != "y" or choice != "n":
-            print("Invalid input. Try again.")
-            return player_wants_to_move(playerid)
-        if choice == "y":
+    while True:
+        user_choice = input(f"{get_player_name(playerid)} do you want to fly there? (y/n): ").strip().lower()
+        if user_choice == 'y':
             return True
-        if choice == "n":
+        elif user_choice == 'n':
             return False
-    except ValueError:
-        print("Invalid input. Try again.")
-        return player_wants_to_move(playerid)
-                
+        else:
+            print("Invalid input. Try again.")
+
+def bad_weather_prevents_a_flight(distance: float, weather_tuple: tuple) -> bool:
+    if calculate_co2_expenditure(distance, weather_tuple) == -1:
+        return True
+    return False
+
 def start_game():
     #Players are created in the beginning
     player1 = create_player(str(input("Please enter the name of the first player: "))) 
     player2 = create_player(str(input("Please enter the name of the second player: ")))
-    #A list of two players is populated to perform actions on them more efficiently
+    #A list of two players is populated to perform actions iteratively on them
     players = [player1, player2]
 
     while True:
@@ -237,21 +235,24 @@ def start_game():
 
             co2_to_add = dice_result * 100
             add_to_co2_budget(player, co2_to_add)
-            print(f"{get_player_name(player)} has a CO2 budget of {get_co2_budget(player)}.")
+            print(f"{get_player_name(player)} has a CO2 budget of {get_co2_budget(player)} now.")
             input()
             #Players get moved to their next destination if they have enough co2 budget and they decide to move
             next_destination = get_players_next_location(player)
             distance = calculate_distance(get_airport_coordinates(get_player_location(player)), get_airport_coordinates(next_destination))
             print(f"The next destination for {get_player_name(player)} is {get_airport_country(next_destination)}, {get_airport_name(next_destination)}.\n")
-            weather = get_random_weather_condition()
             print(f"The distance between {get_airport_name(get_player_location(player))} and {get_airport_name(next_destination)} is {distance}.")
-            print(f"The weather at {get_airport_name(next_destination)} is {describe_weather_condition(weather)}.")
 
-            if calculate_co2_expenditure(distance, weather) == -1:
+            #Get a weather condition
+            weather_tuple = get_random_weather_condition()#Get a random weather tuple where (name, description)
+            description = weather_tuple[1]
+            print(f"The weather forecast shows {description}.")
+
+            if bad_weather_prevents_a_flight(distance, weather_tuple):
                 print(f"The weather is not suitable for a flight. {get_player_name(player)} waits for one move.")
                 break
 
-            print(f"The cost to move there condidering current weather conditions is {calculate_co2_expenditure(distance, weather)}.")
+            print(f"The cost to move there condidering current weather conditions is {calculate_co2_expenditure(distance, weather_tuple)}.")
 
             #ask player if wants to move
             if not player_wants_to_move(player):
@@ -259,7 +260,7 @@ def start_game():
             
 
             #If player's move is doable with player's co2 budget
-            if move_player(player, next_destination, weather):
+            if move_player(player, next_destination, weather_tuple):
                 #Let a player know he reached the next destination
                 print(f"{get_player_name(player)} reached {get_airport_country(next_destination)}!")
                 #If player wins when moves to the destination - announce win and break from dice rolling loop
@@ -275,8 +276,6 @@ def start_game():
         if player_won(player1) or player_won(player2):
             break
 
-
 #If this program is run, does what is below this statement
 if __name__ == "__main__":
     start_game()
-
