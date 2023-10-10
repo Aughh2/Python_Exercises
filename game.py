@@ -14,18 +14,6 @@ db = mysql.connector.connect(
     autocommit = True
 )
 
-###Notes
-# Whether conditions will serve as traps:
-# Depending on them the player has to spend more or less co2 budget, they are already stored in the db so we only have to fetch them
-# Once we decide which whether conditions do what - we code it out, and the rest is to 
-# let user choose continent;
-# We could randomly get 12 or so LARGE airports from continent X and one max per country so that the game is different every time.
-# So TODO list:
-# * Come up with whether condition related bonuses and expenses
-# * Implement continent choice
-# * Maybe create some more settings like map size
-###
-
 game_map = ["LPPT", "LEMD", "LFML", "LIMC", "LOWW", "LZKZ", "UKBB", "UMMS", "EVRA", "EETN", "ULLI", "EFHK"]
 
 
