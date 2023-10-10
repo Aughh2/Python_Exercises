@@ -147,8 +147,9 @@ def get_airport_name(icao: str) -> str:
     except:
         print("Invalid icao to fetch airport name.")
 
-def get_airport_country(icao: str) -> str:
-    sql = f"SELECT iso_country FROM airport WHERE ident=%s"
+
+def get_airport_country_name(icao: str) -> str:
+    sql = "SELECT name FROM country WHERE iso_country IN (SELECT iso_country FROM airport WHERE ident=%s)"
     cursor = db.cursor()
     cursor.execute(sql, (icao,))
     country_name = cursor.fetchone()
@@ -204,7 +205,7 @@ def move_player(playerid: str, destination_icao: str, weather_tuple: tuple) -> b
 
 def player_wants_to_move(playerid: str) -> bool:
     while True:
-        user_choice = input(f"{get_player_name(playerid)} do you want to fly there? (y/n): ").strip().lower()
+        user_choice = input(f"{get_player_name(playerid)}, do you want to fly there? (y/n): ").strip().lower()
         if user_choice == 'y':
             return True
         elif user_choice == 'n':
@@ -221,32 +222,31 @@ def start_game():
     #Players are created in the beginning
     player1 = create_player(str(input("Please enter the name of the first player: "))) 
     player2 = create_player(str(input("Please enter the name of the second player: ")))
-    #A list of two players is populated to perform actions iteratively on them
+    #A list of two players is populated
     players = [player1, player2]
 
-    while True:
-        #players roll the dice
+    while True: #Main loop
+        #each player rolls the dice
         for player in players:
             print(f"{get_player_name(player)} rolls the dice...")
             input()
             dice_result = roll_dice()
             print(f"...{dice_result}")
             #players get co2 budget corresponding to the dice rolled
-
             co2_to_add = dice_result * 100
             add_to_co2_budget(player, co2_to_add)
             print(f"{get_player_name(player)} has a CO2 budget of {get_co2_budget(player)} now.")
             input()
-            #Players get moved to their next destination if they have enough co2 budget and they decide to move
+            #Players get notified of their current location and destination
             next_destination = get_players_next_location(player)
             distance = calculate_distance(get_airport_coordinates(get_player_location(player)), get_airport_coordinates(next_destination))
-            print(f"The next destination for {get_player_name(player)} is {get_airport_country(next_destination)}, {get_airport_name(next_destination)}.\n")
-            print(f"The distance between {get_airport_name(get_player_location(player))} and {get_airport_name(next_destination)} is {distance}.")
+            print(f"The next destination for {get_player_name(player)} is {get_airport_country_name(next_destination)}, {get_airport_name(next_destination)}.\n")
+            print(f"The distance between current location and {get_airport_name(next_destination)} is {distance}.")
 
             #Get a weather condition
             weather_tuple = get_random_weather_condition()#Get a random weather tuple where (name, description)
             description = weather_tuple[1]
-            print(f"The weather forecast shows {description}.")
+            print(f"The weather forecast shows '{description}.'")
 
             if bad_weather_prevents_a_flight(distance, weather_tuple):
                 print(f"The weather is not suitable for a flight. {get_player_name(player)} waits for one move.")
@@ -262,7 +262,7 @@ def start_game():
             #If player's move is doable with player's co2 budget
             if move_player(player, next_destination, weather_tuple):
                 #Let a player know he reached the next destination
-                print(f"{get_player_name(player)} reached {get_airport_country(next_destination)}!")
+                print(f"{get_player_name(player)} reached {get_airport_country_name(next_destination)}!")
                 #If player wins when moves to the destination - announce win and break from dice rolling loop
                 if player_won(player):  
                     print(f"{get_player_name(player)} WON!")
