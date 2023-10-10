@@ -85,6 +85,18 @@ def get_player_name(playerid: str) -> str:
 def roll_dice() -> int:
     return random.randint(1, 6)
 
+def get_random_weather_condition() -> tuple:
+    #Returns the name of a random weather condition
+    sql = "SELECT name, description from GOAL"
+    cursor = db.cursor()
+    cursor.execute(sql)
+    list_of_weather_conditions = cursor.fetchall()
+    return random.choice(list_of_weather_conditions)
+
+def describe_weather_condition(condition: tuple):
+    print(condition[1])
+
+
 def player_won(playerid: str) -> bool:
     #Checks if player won
     try:
@@ -148,8 +160,17 @@ def get_airport_country(icao: str) -> str:
 def calculate_distance(coordinates1: tuple, coordinates2: tuple) -> int:
     return int(distance.distance(coordinates1, coordinates2).km)
 
-def calculate_co2_expenditure(distance:int) -> int:
-    return distance
+def calculate_co2_expenditure(distance:int, weather_name: str) -> int:
+    #Check weather
+    if weather_name == "HOT" or weather_name == "COLD":
+        expenditure = distance * 1.2
+    if weather_name == "0DEG" or weather_name == "10DEG":
+        expenditure = distance * 1.1
+    if weather_name == "20DEG" or weather_name == "CLEAR":
+        expenditure = distance
+    if weather_name == "CLOUDS" or weather_name == "WINDY":
+        expenditure == -1 # IF EXPENDITURE IS -1 then the player stays for one move
+    return expenditure
 
 def co2_budget_is_enough_to_travel(c02_budget: int, distance: float) -> bool:
     if c02_budget >= distance:
@@ -157,7 +178,7 @@ def co2_budget_is_enough_to_travel(c02_budget: int, distance: float) -> bool:
     else:
         return False
     
-def move_player(playerid: str, destination_icao: str) -> bool:
+def move_player(playerid: str, destination_icao: str, weather_name: str) -> bool:
     #Checks if players co2 budget is enough to travel and moves a player into the location
     #Returns false if failed due to insufficient c02 budget
     #Returns true if moved successfully
@@ -170,7 +191,7 @@ def move_player(playerid: str, destination_icao: str) -> bool:
         return False
     
     #calculate c02 expenditure for a flight
-    co2_expenditure = calculate_co2_expenditure(distance)
+    co2_expenditure = calculate_co2_expenditure(distance, weather_name)
     sql = f"UPDATE game SET co2_budget=co2_budget-%s, co2_consumed=co2_consumed+%s WHERE id=%s"
     cursor = db.cursor()
     try:
@@ -181,66 +202,71 @@ def move_player(playerid: str, destination_icao: str) -> bool:
     except:
         print("Error moving player to the location.")
 
+def player_wants_to_move(playerid: str) -> bool:
+    try:
+        choice = str(input(f"{get_player_name(playerid)}, do you want to fly there? (y/n): "))
+        if choice != "y" or choice != "n":
+            print("Invalid input. Try again.")
+            return player_wants_to_move(playerid)
+        if choice == "y":
+            return True
+        if choice == "n":
+            return False
+    except ValueError:
+        print("Invalid input. Try again.")
+        return player_wants_to_move(playerid)
+                
 def start_game():
+    #Players are created in the beginning
     player1 = create_player(str(input("Please enter the name of the first player: "))) 
     player2 = create_player(str(input("Please enter the name of the second player: ")))
+    #A list of two players is populated to perform actions on them more efficiently
     players = [player1, player2]
 
     while True:
         #players roll the dice
-        
         for player in players:
             print(f"{get_player_name(player)} rolls the dice...")
             input()
             dice_result = roll_dice()
             print(f"...{dice_result}")
             #players get co2 budget corresponding to the dice rolled
+
             co2_to_add = dice_result * 100
             add_to_co2_budget(player, co2_to_add)
             print(f"{get_player_name(player)} has a CO2 budget of {get_co2_budget(player)}.")
             input()
-            #Players get moved to their next destination if they have enough co2 budget
+            #Players get moved to their next destination if they have enough co2 budget and they decide to move
             next_destination = get_players_next_location(player)
             distance = calculate_distance(get_airport_coordinates(get_player_location(player)), get_airport_coordinates(next_destination))
-            print(f"The next destination for {get_player_name(player)} is {get_airport_country(next_destination)}, {get_airport_name(next_destination)}.\nThe flight will cost {calculate_co2_expenditure(distance)} CO2 points.")
-            input()
-            if move_player(player, next_destination):
+            print(f"The next destination for {get_player_name(player)} is {get_airport_country(next_destination)}, {get_airport_name(next_destination)}.\n")
+            weather = get_random_weather_condition()
+            print(f"The distance between {get_airport_name(get_player_location(player))} and {get_airport_name(next_destination)} is {distance}.")
+            print(f"The weather at {get_airport_name(next_destination)} is {describe_weather_condition(weather)}.")
+            print(f"The cost to move there condidering current weather conditions is {calculate_co2_expenditure(distance, weather)}.")
+
+            #ask player if wants to move
+            if not player_wants_to_move(player):
+                break
+            
+
+            #If player's move is doable with player's co2 budget
+            if move_player(player, next_destination, weather):
+                #Let a player know he reached the next destination
                 print(f"{get_player_name(player)} reached {get_airport_country(next_destination)}!")
+                #If player wins when moves to the destination - announce win and break from dice rolling loop
                 if player_won(player):  
                     print(f"{get_player_name(player)} WON!")
                     break
+            #If not enough co2 for the move, let the player know
             else:
                 print(f"{get_player_name(player)} does not have enough CO2 budget. Wait for the next roll.")
             input()
         
-        #If one of the players won-braak from the main loop
+        #If one of the players won - braak from the main loop
         if player_won(player1) or player_won(player2):
             break
 
-def settings_menu() -> bool:
-    #UNFINISHED, do not use
-    OPTION_AMOUNT = 1
-    print("1. Choose map")
-    
-    try:
-        option = int(input("Type option: "))
-    except ValueError:
-        print("Invalid input value")
-        settings_menu()
-
-    if option < 1 or option > OPTION_AMOUNT:
-        print("Invalid option choice")
-        settings_menu()
-
-    if option == "1":
-        print("1. Europe")
-        print("2. North America")
-        print("3. South America")
-        print("4. Asia")
-        print("5. Africa")
-        print("6. Oceania")
-
-    return True
 
 def main_menu() -> bool:
     #Lets user run the game and configure settings
@@ -264,10 +290,13 @@ def main_menu() -> bool:
         start_game()
     if option == 2:
         #NOT USABLE YET
-        settings_menu()
+        #settings_menu()
+        pass
     if option == 3:
         sys.exit()
     return True
-    
+
+#If this program is run, does what is below this statement
 if __name__ == "__main__":
-    main_menu()
+    start_game()
+
