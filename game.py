@@ -162,6 +162,7 @@ def calculate_distance(coordinates1: tuple, coordinates2: tuple) -> int:
 
 def calculate_co2_expenditure(distance:int, weather_name: str) -> int:
     #Check weather
+    expenditure = 0
     if weather_name == "HOT" or weather_name == "COLD":
         expenditure = distance * 1.2
     if weather_name == "0DEG" or weather_name == "10DEG":
@@ -243,6 +244,11 @@ def start_game():
             weather = get_random_weather_condition()
             print(f"The distance between {get_airport_name(get_player_location(player))} and {get_airport_name(next_destination)} is {distance}.")
             print(f"The weather at {get_airport_name(next_destination)} is {describe_weather_condition(weather)}.")
+
+            if calculate_co2_expenditure(distance, weather) == -1:
+                print(f"The weather is not suitable for a flight. {get_player_name(player)} waits for one move.")
+                break
+            
             print(f"The cost to move there condidering current weather conditions is {calculate_co2_expenditure(distance, weather)}.")
 
             #ask player if wants to move
