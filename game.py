@@ -206,6 +206,7 @@ def move_player(playerid: str, destination_icao: str, weather_name: str) -> bool
 def player_wants_to_move(playerid: str) -> bool:
     try:
         choice = str(input(f"{get_player_name(playerid)}, do you want to fly there? (y/n): "))
+        choice = choice.lower()
         if choice != "y" or choice != "n":
             print("Invalid input. Try again.")
             return player_wants_to_move(playerid)
@@ -248,7 +249,7 @@ def start_game():
             if calculate_co2_expenditure(distance, weather) == -1:
                 print(f"The weather is not suitable for a flight. {get_player_name(player)} waits for one move.")
                 break
-            
+
             print(f"The cost to move there condidering current weather conditions is {calculate_co2_expenditure(distance, weather)}.")
 
             #ask player if wants to move
@@ -273,34 +274,6 @@ def start_game():
         if player_won(player1) or player_won(player2):
             break
 
-
-def main_menu() -> bool:
-    #Lets user run the game and configure settings
-    OPTION_AMOUNT = 3 
-    print("1. Start game")
-    print("2. Settings")
-    print("3. Exit")
-    
-    try:
-        option = int(input("Type option: "))
-    except ValueError:
-        print("Invalid input value")
-        #Calls itself until correct option choice is received
-        main_menu()
-
-    if option < 1 or option > OPTION_AMOUNT:
-        print("Invalid option choice")
-        main_menu()
-    
-    if option == 1:
-        start_game()
-    if option == 2:
-        #NOT USABLE YET
-        #settings_menu()
-        pass
-    if option == 3:
-        sys.exit()
-    return True
 
 #If this program is run, does what is below this statement
 if __name__ == "__main__":
