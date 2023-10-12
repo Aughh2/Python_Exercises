@@ -47,6 +47,7 @@ def get_player_location(playerid: str) -> str:
         return location[0]
     except:
         print("Error fetching given player's location")
+        return ""
 
 def get_players_next_location(playerid: str) -> str:
     try:
@@ -57,6 +58,7 @@ def get_players_next_location(playerid: str) -> str:
         return next_icao
     except:
         print("Error getting player's next location.")
+        return ""
     
 
 def get_player_name(playerid: str) -> str:
@@ -69,6 +71,7 @@ def get_player_name(playerid: str) -> str:
         return name[0]
     except:
         print("Wrong playerid provided to get player name")
+        return ""
 
 def roll_dice() -> int:
     return random.randint(1, 6)
@@ -81,7 +84,6 @@ def get_random_weather_condition() -> tuple:
     list_of_weather_conditions = cursor.fetchall()
     return random.choice(list_of_weather_conditions)
 
-
 def player_won(playerid: str) -> bool:
     #Checks if player won
     try:
@@ -91,6 +93,7 @@ def player_won(playerid: str) -> bool:
             return False
     except:
         print("Wrong playerid provided to announce win.")
+        return False
     
 def get_co2_budget(playerid: str) -> int:
     try:
@@ -102,6 +105,8 @@ def get_co2_budget(playerid: str) -> int:
         return co2_budget[0]
     except:
         print("Wrong playerid provided to get co2 budget.")
+        return 0
+
 
 def add_to_co2_budget(playerid: str, value: int):
     try:
@@ -123,6 +128,7 @@ def get_airport_coordinates(icao: str) -> ():
         return coordinates
     except:
         print("Invalid icao to fetch coordinates.")
+        return ()
 
 def get_airport_name(icao: str) -> str:
     try:
@@ -134,6 +140,7 @@ def get_airport_name(icao: str) -> str:
         return name[0]
     except:
         print("Invalid icao to fetch airport name.")
+        return ""
 
 
 def get_airport_country_name(icao: str) -> str:
@@ -244,7 +251,7 @@ def start_game():
 
             #ask player if wants to move
             if not player_wants_to_move(player):
-                break
+                continue
             
 
             #If player's move is doable with player's co2 budget
